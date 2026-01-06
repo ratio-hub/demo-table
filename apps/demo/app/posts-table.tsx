@@ -24,6 +24,7 @@ export function PostsTable({ data }: PostsTableProps) {
     columns: postTableColumns,
     getRowId: (row) => row.id,
     pageCount: data.total,
+    storageKey: "posts-table",
     ...tableState,
   });
 

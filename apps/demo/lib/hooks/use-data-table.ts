@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import {
   type ColumnFiltersState,
   getCoreRowModel,
@@ -18,18 +17,19 @@ import {
   useReactTable,
   type VisibilityState,
 } from "@tanstack/react-table";
+import * as React from "react";
 
 interface UseDataTableProps<TData>
   extends Omit<
-      TableOptions<TData>,
-      | "state"
-      | "pageCount"
-      | "getCoreRowModel"
-      | "manualFiltering"
-      | "manualPagination"
-      | "manualSorting"
-    >,
-    Required<Pick<TableOptions<TData>, "pageCount">> {
+    TableOptions<TData>,
+    | "state"
+    | "pageCount"
+    | "getCoreRowModel"
+    | "manualFiltering"
+    | "manualPagination"
+    | "manualSorting"
+  >,
+  Required<Pick<TableOptions<TData>, "pageCount">> {
   paginationState: PaginationState;
   setPaginationState: (updaterOrValue: PaginationState) => void;
 
@@ -38,6 +38,8 @@ interface UseDataTableProps<TData>
 
   columnFiltersState: ColumnFiltersState;
   setColumnFiltersState: (updaterOrValue: ColumnFiltersState) => void;
+
+  storageKey?: string;
 }
 
 export function useDataTable<TData>(props: UseDataTableProps<TData>) {
@@ -51,11 +53,53 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     setSortingState,
     columnFiltersState,
     setColumnFiltersState,
+    storageKey = "data-table",
     ...tableProps
   } = props;
 
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const savedRowSelection = localStorage.getItem(`${storageKey}-row-selection`);
+      const savedColumnVisibility = localStorage.getItem(`${storageKey}-column-visibility`);
+
+      if (savedRowSelection) {
+        const parsed = JSON.parse(savedRowSelection);
+        if (parsed && typeof parsed === "object") {
+          setRowSelection(parsed);
+        }
+      }
+      if (savedColumnVisibility) {
+        const parsed = JSON.parse(savedColumnVisibility);
+        if (parsed && typeof parsed === "object") {
+          setColumnVisibility(parsed);
+        }
+      }
+    } catch (error) {
+      console.warn("Failed to load from localStorage", error);
+    }
+  }, [storageKey]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem(`${storageKey}-row-selection`, JSON.stringify(rowSelection));
+    } catch (error) {
+      console.warn("Failed to save row selection", error);
+    }
+  }, [rowSelection, storageKey]);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem(`${storageKey}-column-visibility`, JSON.stringify(columnVisibility));
+    } catch (error) {
+      console.warn("Failed to save column visibility", error);
+    }
+  }, [columnVisibility, storageKey]);
 
   function onSortingChange(updaterOrValue: Updater<SortingState>) {
     if (typeof updaterOrValue === "function") {
