@@ -18,7 +18,7 @@ import {
   useReactTable,
   type VisibilityState,
 } from "@tanstack/react-table";
-import * as React from "react";
+import { useEffect, useState } from "react";
 
 function getFromStorage<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
@@ -79,25 +79,25 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     ...tableProps
   } = props;
 
-  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>(() =>
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>(() =>
     getFromStorage(`${storageKey}-row-selection`, {})
   );
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>(() =>
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() =>
     getFromStorage(`${storageKey}-column-visibility`, {})
   );
-  const [columnOrder, setColumnOrder] = React.useState<ColumnOrderState>(() =>
+  const [columnOrder, setColumnOrder] = useState<ColumnOrderState>(() =>
     getFromStorage(`${storageKey}-column-order`, [])
   );
 
-  React.useEffect(() => {
+  useEffect(() => {
     saveToStorage(`${storageKey}-row-selection`, rowSelection);
   }, [rowSelection, storageKey]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     saveToStorage(`${storageKey}-column-visibility`, columnVisibility);
   }, [columnVisibility, storageKey]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     saveToStorage(`${storageKey}-column-order`, columnOrder);
   }, [columnOrder, storageKey]);
 
