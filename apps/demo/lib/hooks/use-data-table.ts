@@ -19,6 +19,8 @@ import {
   type VisibilityState,
 } from "@tanstack/react-table";
 
+const TABLE_VIEW_STORAGE_KEY = "ratio-demo-table-view";
+
 interface UseDataTableProps<TData>
   extends Omit<
       TableOptions<TData>,
@@ -41,7 +43,6 @@ interface UseDataTableProps<TData>
 }
 
 export function useDataTable<TData>(props: UseDataTableProps<TData>) {
-  "use no memo";
   const {
     columns,
     pageCount = -1,
@@ -55,30 +56,66 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
   } = props;
 
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+
+  // ✅ Restore column visibility
+  const [columnVisibility, setColumnVisibility] =
+    React.useState<VisibilityState>(() => {
+      if (typeof window === "undefined") return {};
+      try {
+        const stored = localStorage.getItem(TABLE_VIEW_STORAGE_KEY);
+        return stored ? JSON.parse(stored).columnVisibility ?? {} : {};
+      } catch {
+        return {};
+      }
+    });
+
+  // ✅ Restore column order
+  const [columnOrder, setColumnOrder] = React.useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const stored = localStorage.getItem(TABLE_VIEW_STORAGE_KEY);
+      return stored ? JSON.parse(stored).columnOrder ?? [] : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // ✅ Persist view state
+  React.useEffect(() => {
+    const viewState = {
+      columnVisibility,
+      columnOrder,
+    };
+
+    try {
+      localStorage.setItem(TABLE_VIEW_STORAGE_KEY, JSON.stringify(viewState));
+    } catch {
+      // ignore write errors
+    }
+  }, [columnVisibility, columnOrder]);
 
   function onSortingChange(updaterOrValue: Updater<SortingState>) {
-    if (typeof updaterOrValue === "function") {
-      setSortingState(updaterOrValue(sortingState));
-    } else {
-      setSortingState(updaterOrValue);
-    }
+    setSortingState(
+      typeof updaterOrValue === "function"
+        ? updaterOrValue(sortingState)
+        : updaterOrValue
+    );
   }
 
   function onPaginationChange(updaterOrValue: Updater<PaginationState>) {
-    if (typeof updaterOrValue === "function") {
-      setPaginationState(updaterOrValue(paginationState));
-    } else {
-      setPaginationState(updaterOrValue);
-    }
+    setPaginationState(
+      typeof updaterOrValue === "function"
+        ? updaterOrValue(paginationState)
+        : updaterOrValue
+    );
   }
 
   function onColumnFiltersChange(updaterOrValue: Updater<ColumnFiltersState>) {
-    if (typeof updaterOrValue === "function") {
-      setColumnFiltersState(updaterOrValue(columnFiltersState));
-    } else {
-      setColumnFiltersState(updaterOrValue);
-    }
+    setColumnFiltersState(
+      typeof updaterOrValue === "function"
+        ? updaterOrValue(columnFiltersState)
+        : updaterOrValue
+    );
   }
 
   const table = useReactTable({
@@ -88,9 +125,10 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     state: {
       sorting: sortingState,
       pagination: paginationState,
-      columnVisibility,
-      rowSelection,
       columnFilters: columnFiltersState,
+      rowSelection,
+      columnVisibility,
+      columnOrder, // ✅ NEW
     },
 
     defaultColumn: {
@@ -101,9 +139,10 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     onPaginationChange,
     onSortingChange,
     onColumnFiltersChange,
-
     onRowSelectionChange: setRowSelection,
     onColumnVisibilityChange: setColumnVisibility,
+    onColumnOrderChange: setColumnOrder, // ✅ NEW
+
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
