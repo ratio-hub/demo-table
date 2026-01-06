@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useTransition } from "react";
+import { useEffect, useMemo, useTransition } from "react";
 
 import { useQueryStates } from "nuqs";
 
@@ -18,6 +18,7 @@ import {
   type Filters,
   type Sort,
 } from "@/lib/search-params/posts-search-params";
+import { useLocalStorage } from "./use-local-storage";
 
 export const filterVariantsSchema = [
   "text",
@@ -29,6 +30,10 @@ export type FilterVariant = (typeof filterVariantsSchema)[number];
 
 export function useDataTableState() {
   const [isPending, startTransition] = useTransition();
+  const [localStoragePerPage, setLocalStoragePerPage] = useLocalStorage<number>(
+    "data-table-per-page",
+    20
+  );
 
   const [searchParams, setSearchParams] = useQueryStates(
     {
@@ -99,6 +104,20 @@ export function useDataTableState() {
       filter: Object.keys(filterRecord).length > 0 ? filterRecord : null,
     });
   };
+
+  useEffect(() => {
+    if (searchParams.perPage) {
+      setLocalStoragePerPage(searchParams.perPage);
+    }
+  }, [searchParams.perPage, setLocalStoragePerPage]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has("perPage") && localStoragePerPage !== searchParams.perPage) {
+      setSearchParams({ perPage: localStoragePerPage });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return {
     paginationState,

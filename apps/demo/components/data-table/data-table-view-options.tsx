@@ -49,6 +49,7 @@ export function DataTableViewOptions<TData>({
   return (
     <Popover>
       <PopoverTrigger
+        nativeButton
         render={
           <Button
             aria-label="Toggle columns"

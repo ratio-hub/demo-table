@@ -59,7 +59,7 @@ function Checkbox({
         onCheckedChange={setIsChecked}
         indeterminate={indeterminate}
         value={value}
-        nativeButton={nativeButton}
+        nativeButton={nativeButton ?? true}
         parent={parent}
         disabled={disabled}
         readOnly={readOnly}

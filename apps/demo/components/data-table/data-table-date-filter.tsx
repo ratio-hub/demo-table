@@ -147,6 +147,7 @@ export function DataTableDateFilter<TData>({
   return (
     <Popover>
       <PopoverTrigger
+        nativeButton
         render={
           <Button className="border-dashed font-normal" variant="outline" />
         }

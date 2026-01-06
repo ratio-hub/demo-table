@@ -17,7 +17,9 @@ import {
   type Updater,
   useReactTable,
   type VisibilityState,
+  type ColumnOrderState,
 } from "@tanstack/react-table";
+import { useLocalStorage } from "./use-local-storage";
 
 interface UseDataTableProps<TData>
   extends Omit<
@@ -55,7 +57,14 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
   } = props;
 
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+  const [columnVisibility, setColumnVisibility] = useLocalStorage<VisibilityState>(
+    "data-table-visibility",
+    {}
+  );
+  const [columnOrder, setColumnOrder] = useLocalStorage<ColumnOrderState>(
+    "data-table-order",
+    []
+  );
 
   function onSortingChange(updaterOrValue: Updater<SortingState>) {
     if (typeof updaterOrValue === "function") {
@@ -91,6 +100,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
       columnVisibility,
       rowSelection,
       columnFilters: columnFiltersState,
+      columnOrder,
     },
 
     defaultColumn: {
@@ -104,6 +114,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
 
     onRowSelectionChange: setRowSelection,
     onColumnVisibilityChange: setColumnVisibility,
+    onColumnOrderChange: setColumnOrder,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
