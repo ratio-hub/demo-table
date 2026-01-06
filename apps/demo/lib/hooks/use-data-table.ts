@@ -2,6 +2,7 @@
 
 import {
   type ColumnFiltersState,
+  type ColumnOrderState,
   getCoreRowModel,
   getFacetedMinMaxValues,
   getFacetedRowModel,
@@ -18,6 +19,27 @@ import {
   type VisibilityState,
 } from "@tanstack/react-table";
 import * as React from "react";
+
+function getFromStorage<T>(key: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const item = localStorage.getItem(key);
+    if (!item) return fallback;
+    const parsed = JSON.parse(item);
+    return parsed && typeof parsed === "object" ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveToStorage<T>(key: string, value: T): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.warn(`Failed to save ${key}`, error);
+  }
+}
 
 interface UseDataTableProps<TData>
   extends Omit<
@@ -57,49 +79,27 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     ...tableProps
   } = props;
 
-  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>(() =>
+    getFromStorage(`${storageKey}-row-selection`, {})
+  );
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>(() =>
+    getFromStorage(`${storageKey}-column-visibility`, {})
+  );
+  const [columnOrder, setColumnOrder] = React.useState<ColumnOrderState>(() =>
+    getFromStorage(`${storageKey}-column-order`, [])
+  );
 
   React.useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const savedRowSelection = localStorage.getItem(`${storageKey}-row-selection`);
-      const savedColumnVisibility = localStorage.getItem(`${storageKey}-column-visibility`);
-
-      if (savedRowSelection) {
-        const parsed = JSON.parse(savedRowSelection);
-        if (parsed && typeof parsed === "object") {
-          setRowSelection(parsed);
-        }
-      }
-      if (savedColumnVisibility) {
-        const parsed = JSON.parse(savedColumnVisibility);
-        if (parsed && typeof parsed === "object") {
-          setColumnVisibility(parsed);
-        }
-      }
-    } catch (error) {
-      console.warn("Failed to load from localStorage", error);
-    }
-  }, [storageKey]);
-
-  React.useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      localStorage.setItem(`${storageKey}-row-selection`, JSON.stringify(rowSelection));
-    } catch (error) {
-      console.warn("Failed to save row selection", error);
-    }
+    saveToStorage(`${storageKey}-row-selection`, rowSelection);
   }, [rowSelection, storageKey]);
 
   React.useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      localStorage.setItem(`${storageKey}-column-visibility`, JSON.stringify(columnVisibility));
-    } catch (error) {
-      console.warn("Failed to save column visibility", error);
-    }
+    saveToStorage(`${storageKey}-column-visibility`, columnVisibility);
   }, [columnVisibility, storageKey]);
+
+  React.useEffect(() => {
+    saveToStorage(`${storageKey}-column-order`, columnOrder);
+  }, [columnOrder, storageKey]);
 
   function onSortingChange(updaterOrValue: Updater<SortingState>) {
     if (typeof updaterOrValue === "function") {
@@ -135,6 +135,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
       columnVisibility,
       rowSelection,
       columnFilters: columnFiltersState,
+      columnOrder,
     },
 
     defaultColumn: {
@@ -148,6 +149,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
 
     onRowSelectionChange: setRowSelection,
     onColumnVisibilityChange: setColumnVisibility,
+    onColumnOrderChange: setColumnOrder,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
