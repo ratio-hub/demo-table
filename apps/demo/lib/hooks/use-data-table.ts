@@ -19,6 +19,40 @@ import {
   type VisibilityState,
 } from "@tanstack/react-table";
 
+const STORAGE_KEY = "data-table-view-state";
+
+function getStoredViewState(): {
+  columnVisibility: VisibilityState;
+  columnOrder: ColumnOrderState;
+} {
+  if (typeof window === "undefined") {
+    return { columnVisibility: {}, columnOrder: [] };
+  }
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch {
+    //ignore parse errors
+  }
+  return { columnVisibility: {}, columnOrder: [] };
+}
+
+function saveViewState(
+  columnVisibility: VisibilityState,
+  columnOrder: ColumnOrderState
+) {
+  try {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ columnVisibility, columnOrder })
+    );
+  } catch {
+    //ignore storage errors
+  }
+}
+
 interface UseDataTableProps<TData>
   extends Omit<
       TableOptions<TData>,
@@ -55,7 +89,15 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
   } = props;
 
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+  const [columnVisibility, setColumnVisibility] =
+    React.useState<VisibilityState>(getStoredViewState().columnVisibility);
+  const [columnOrder, setColumnOrder] = React.useState<ColumnOrderState>(
+    getStoredViewState().columnOrder
+  );
+
+  React.useEffect(() => {
+    saveViewState(columnVisibility, columnOrder);
+  }, [columnVisibility, columnOrder]);
 
   function onSortingChange(updaterOrValue: Updater<SortingState>) {
     if (typeof updaterOrValue === "function") {
@@ -91,6 +133,8 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
       columnVisibility,
       rowSelection,
       columnFilters: columnFiltersState,
+      columnVisibility,
+      columnOrder,
     },
 
     defaultColumn: {
@@ -101,6 +145,8 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     onPaginationChange,
     onSortingChange,
     onColumnFiltersChange,
+    onColumnVisibilityChange: setColumnVisibility,
+    onColumnOrderChange: setColumnOrder,
 
     onRowSelectionChange: setRowSelection,
     onColumnVisibilityChange: setColumnVisibility,
