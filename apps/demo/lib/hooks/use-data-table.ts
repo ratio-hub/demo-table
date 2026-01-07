@@ -19,6 +19,8 @@ import {
   type VisibilityState,
 } from "@tanstack/react-table";
 
+const TABLE_VIEW_STORAGE_KEY = "demo-table-view";
+
 interface UseDataTableProps<TData>
   extends Omit<
       TableOptions<TData>,
@@ -41,69 +43,92 @@ interface UseDataTableProps<TData>
 }
 
 export function useDataTable<TData>(props: UseDataTableProps<TData>) {
-  "use no memo";
   const {
     columns,
     pageCount = -1,
-    paginationState,
-    setPaginationState,
-    sortingState,
-    setSortingState,
-    columnFiltersState,
-    setColumnFiltersState,
+    paginationState: propsPaginationState,
+    setPaginationState: propsSetPaginationState,
+    sortingState: propsSortingState,
+    setSortingState: propsSetSortingState,
+    columnFiltersState: propsColumnFiltersState,
+    setColumnFiltersState: propsSetColumnFiltersState,
     ...tableProps
   } = props;
 
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
 
-  function onSortingChange(updaterOrValue: Updater<SortingState>) {
-    if (typeof updaterOrValue === "function") {
-      setSortingState(updaterOrValue(sortingState));
-    } else {
-      setSortingState(updaterOrValue);
+  // added persistence for column visibility
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const stored = localStorage.getItem(TABLE_VIEW_STORAGE_KEY);
+      return stored ? JSON.parse(stored).columnVisibility ?? {} : {};
+    } catch {
+      return {};
     }
-  }
+  });
 
-  function onPaginationChange(updaterOrValue: Updater<PaginationState>) {
-    if (typeof updaterOrValue === "function") {
-      setPaginationState(updaterOrValue(paginationState));
-    } else {
-      setPaginationState(updaterOrValue);
+  // added persistence for column order
+  const [columnOrder, setColumnOrder] = React.useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const stored = localStorage.getItem(TABLE_VIEW_STORAGE_KEY);
+      return stored ? JSON.parse(stored).columnOrder ?? [] : [];
+    } catch {
+      return [];
     }
-  }
+  });
 
-  function onColumnFiltersChange(updaterOrValue: Updater<ColumnFiltersState>) {
-    if (typeof updaterOrValue === "function") {
-      setColumnFiltersState(updaterOrValue(columnFiltersState));
-    } else {
-      setColumnFiltersState(updaterOrValue);
-    }
-  }
+  // this part saves column visibility and order to localStorage
+  React.useEffect(() => {
+    try {
+      localStorage.setItem(
+        TABLE_VIEW_STORAGE_KEY,
+        JSON.stringify({ columnVisibility, columnOrder })
+      );
+    } catch {}
+  }, [columnVisibility, columnOrder]);
+
+  const onSortingChange = (updaterOrValue: Updater<SortingState>) => {
+    const newState =
+      typeof updaterOrValue === "function" ? updaterOrValue(propsSortingState) : updaterOrValue;
+    propsSetSortingState(newState);
+  };
+
+  const onPaginationChange = (updaterOrValue: Updater<PaginationState>) => {
+    const newState =
+      typeof updaterOrValue === "function" ? updaterOrValue(propsPaginationState) : updaterOrValue;
+    propsSetPaginationState(newState);
+  };
+
+  const onColumnFiltersChange = (updaterOrValue: Updater<ColumnFiltersState>) => {
+    const newState =
+      typeof updaterOrValue === "function" ? updaterOrValue(propsColumnFiltersState) : updaterOrValue;
+    propsSetColumnFiltersState(newState);
+  };
 
   const table = useReactTable({
     ...tableProps,
     columns,
     pageCount,
     state: {
-      sorting: sortingState,
-      pagination: paginationState,
-      columnVisibility,
+      sorting: propsSortingState,
+      pagination: propsPaginationState,
+      columnVisibility,   
       rowSelection,
-      columnFilters: columnFiltersState,
+      columnFilters: propsColumnFiltersState,
+      columnOrder,        
     },
-
     defaultColumn: {
       ...tableProps.defaultColumn,
       enableColumnFilter: false,
     },
-
     onPaginationChange,
     onSortingChange,
     onColumnFiltersChange,
-
     onRowSelectionChange: setRowSelection,
     onColumnVisibilityChange: setColumnVisibility,
+    onColumnOrderChange: setColumnOrder,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -111,7 +136,6 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     getFacetedMinMaxValues: getFacetedMinMaxValues(),
-
     manualPagination: true,
     manualSorting: true,
     manualFiltering: true,
