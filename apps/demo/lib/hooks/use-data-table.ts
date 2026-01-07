@@ -20,7 +20,8 @@ import {
 } from "@tanstack/react-table";
 
 interface UseDataTableProps<TData>
-  extends Omit<
+  extends
+    Omit<
       TableOptions<TData>,
       | "state"
       | "pageCount"
@@ -38,6 +39,38 @@ interface UseDataTableProps<TData>
 
   columnFiltersState: ColumnFiltersState;
   setColumnFiltersState: (updaterOrValue: ColumnFiltersState) => void;
+
+  storageKey?: string;
+}
+
+interface PersistedTableState {
+  columnVisibility: VisibilityState;
+  rowSelection: RowSelectionState;
+}
+
+function getStorageKey(key: string): string {
+  return `table-state-${key}`;
+}
+
+function loadPersistedState(storageKey: string): PersistedTableState | null {
+  try {
+    const stored = localStorage.getItem(getStorageKey(storageKey));
+    if (!stored) return null;
+    return JSON.parse(stored);
+  } catch {
+    return null;
+  }
+}
+
+function savePersistedState(
+  storageKey: string,
+  state: PersistedTableState
+): void {
+  try {
+    localStorage.setItem(getStorageKey(storageKey), JSON.stringify(state));
+  } catch {
+    // silently fail if localStorage is unavailable (ignore errors)
+  }
 }
 
 export function useDataTable<TData>(props: UseDataTableProps<TData>) {
@@ -51,11 +84,26 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     setSortingState,
     columnFiltersState,
     setColumnFiltersState,
+    storageKey,
     ...tableProps
   } = props;
 
-  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+  const persistedState = storageKey ? loadPersistedState(storageKey) : null;
+
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>(
+    persistedState?.rowSelection ?? {}
+  );
+  const [columnVisibility, setColumnVisibility] =
+    React.useState<VisibilityState>(persistedState?.columnVisibility ?? {});
+
+  React.useEffect(() => {
+    if (!storageKey) return;
+
+    savePersistedState(storageKey, {
+      columnVisibility,
+      rowSelection,
+    });
+  }, [storageKey, columnVisibility, rowSelection]);
 
   function onSortingChange(updaterOrValue: Updater<SortingState>) {
     if (typeof updaterOrValue === "function") {
