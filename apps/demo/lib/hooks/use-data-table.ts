@@ -40,6 +40,8 @@ interface UseDataTableProps<TData>
   setColumnFiltersState: (updaterOrValue: ColumnFiltersState) => void;
 }
 
+const COLUMN_VISIBILITY_STORAGE_KEY = "posts-table-column-visibility"
+
 export function useDataTable<TData>(props: UseDataTableProps<TData>) {
   "use no memo";
   const {
@@ -55,7 +57,30 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
   } = props;
 
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>(() => {
+    if (typeof window === 'undefined') return {}; 
+    
+    try {
+      const saved = localStorage.getItem(COLUMN_VISIBILITY_STORAGE_KEY);
+      return saved ? JSON.parse(saved) : {};
+    } catch (error) {
+      console.error('Failed to load column visibility from localStorage:', error);
+      return {};
+    }
+  });
+
+  // Save column visibility to localStorage whenever it changes
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    try {
+      localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(columnVisibility));
+    } catch (error) {
+      console.error('Failed to save column visibility to localStorage:', error);
+    }
+  }, [columnVisibility]);
+
 
   function onSortingChange(updaterOrValue: Updater<SortingState>) {
     if (typeof updaterOrValue === "function") {
