@@ -9,10 +9,24 @@ import type {
 
 import type { Post, GetPostsResult } from "./types";
 
+const postsCache = new Map<string, GetPostsResult>();
+
+function createCacheKey(params: PostsSearchParams): string {
+  return JSON.stringify(params);
+}
+
 export async function getPosts(
   params: PostsSearchParams
 ): Promise<GetPostsResult> {
+  const cacheKey = createCacheKey(params);
+  const cachedResult = postsCache.get(cacheKey);
+
+  if (cachedResult) {
+    return cachedResult;
+  }
+
   await new Promise((resolve) => setTimeout(resolve, 1000));
+
   let posts: Post[] = [...(MOCK_POSTS as Post[])];
 
   posts = applyFilters(posts, params.filter);
@@ -24,7 +38,11 @@ export async function getPosts(
 
   posts = posts.slice(start, end);
 
-  return { posts, total };
+  const result: GetPostsResult = { posts, total };
+
+  postsCache.set(cacheKey, result);
+
+  return result;
 }
 
 function applyFilters(posts: Post[], filters: Filters): Post[] {
